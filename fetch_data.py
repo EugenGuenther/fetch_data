@@ -45,7 +45,7 @@ def fetch_series(series_id):
     
     try:
         # Timeout verhindert Hängenbleiben (30 Sek)
-        response = requests.get(BASE_URL, params=params, headers=headers, timeout=60)
+        response = requests.get(BASE_URL, params=params, headers=headers, timeout=300)
         
         # HTTP Fehler abfangen (z.B. 403 Forbidden bei falschem Key)
         if response.status_code != 200:
@@ -126,5 +126,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
