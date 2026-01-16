@@ -1,0 +1,37 @@
+name: Daily Sentinel Update
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Täglich um 08:00 Uhr UTC
+  workflow_dispatch:    # Erlaubt manuellen Start per Button
+
+permissions:
+  contents: write       # Erlaubt dem Bot, die JSON-Datei zu speichern
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Libraries
+        run: pip install requests
+
+      - name: Run Fetch Script
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python fetch_data.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'SentinelBot'
+          git config --global user.email 'bot@sentinel.app'
+          git add sentinel_data.json
+          # Commit nur machen, wenn sich was geändert hat
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-Update Data" && git push)
