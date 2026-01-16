@@ -1,37 +1,58 @@
 name: Daily Sentinel Update
 
+# WANN soll das laufen?
 on:
   schedule:
-    - cron: '0 8 * * *' # Täglich um 08:00 Uhr UTC
-  workflow_dispatch:    # Erlaubt manuellen Start per Button
+    # Täglich um 08:00 Uhr UTC (ca. 09:00/10:00 Uhr deutscher Zeit)
+    # Das ist ideal, da FRED-Daten meist über Nacht aktualisiert werden.
+    - cron: '0 8 * * *'
+  
+  # Erlaubt dir, den Prozess manuell per Button im "Actions"-Tab zu starten (zum Testen)
+  workflow_dispatch:
 
+# BERECHTIGUNGEN
+# Wichtig: Erlaubt dem Bot, die JSON-Datei zurück ins Repo zu speichern.
 permissions:
-  contents: write       # Erlaubt dem Bot, die JSON-Datei zu speichern
+  contents: write
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    
     steps:
+      # 1. Repository herunterladen
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # 2. Python Umgebung einrichten
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install Libraries
+      # 3. Bibliotheken installieren
+      # Wir brauchen nur 'requests', da wir Pandas für Speed entfernt haben.
+      - name: Install Dependencies
         run: pip install requests
 
+      # 4. Das Python-Skript ausführen (DER WICHTIGE TEIL)
       - name: Run Fetch Script
         env:
+          # HIER ist die Brücke: GitHub Secret -> Python Umgebungsvariable
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python fetch_data.py
 
+      # 5. Ergebnis speichern (nur wenn Schritt 4 erfolgreich war)
       - name: Commit and Push changes
         run: |
+          # Bot-Identität konfigurieren
           git config --global user.name 'SentinelBot'
           git config --global user.email 'bot@sentinel.app'
+          
+          # Die neue JSON-Datei zum Commit vormerken
           git add sentinel_data.json
-          # Commit nur machen, wenn sich was geändert hat
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-Update Data" && git push)
+          
+          # Sicherheits-Check: Gibt es überhaupt Änderungen?
+          # Wenn nein (git diff --quiet), tue nichts.
+          # Wenn ja (||), mache den Commit und Push.
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-Update Data [skip ci]" && git push)
