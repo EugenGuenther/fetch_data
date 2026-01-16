@@ -1,29 +1,31 @@
 import os
 import json
 import requests
-import pandas as pd
 from datetime import datetime, timedelta
 
 # KONFIGURATION
+# Der Key kommt sicher aus den GitHub Secrets
 API_KEY = os.environ.get('FRED_API_KEY')
 BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
-# Wir holen genug Historie für 200-Tage-Durchschnitte etc.
+# Wir holen 365 Tage Historie für die Durchschnitte
 START_DATE = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
-# DEINE SERIEN (Die neuen "kostenlosen" Quellen)
+# DAS SIND DIE "KOSTENLOSEN" DATENQUELLEN (FRED ONLY)
 SERIES_MAP = {
-    # Für MBP (Liquidität)
+    # System Liquidity (MBP)
     "WALCL": "WALCL",           # Fed Assets
-    "WTREGEN": "WTREGEN",       # TGA (Treasury Account)
+    "WTREGEN": "WTREGEN",       # Treasury Account
     "RRP": "RRPONTSYD",         # Reverse Repo
     
-    # Für ATM (Volatilität) & CFI (Credit)
+    # Volatilität & Kredit (ATM & CFI)
     "DGS10": "DGS10",           # 10Y Treasury Yield
     "DBAA": "DBAA"              # Corp Bonds (Baa)
 }
 
 def fetch_series(series_id):
-    """Holt Daten von FRED und gibt sie als saubere Liste zurück."""
+    if not API_KEY:
+        return []
+        
     params = {
         "series_id": series_id,
         "api_key": API_KEY,
@@ -35,37 +37,37 @@ def fetch_series(series_id):
         response.raise_for_status()
         data = response.json()
         
-        # Nur Datum und Wert extrahieren
         observations = []
         for obs in data.get("observations", []):
-            if obs["value"] != ".": # "." bedeutet "kein Datenpunkt" bei FRED
+            if obs["value"] != ".": 
                 observations.append({
                     "d": obs["date"],
                     "v": float(obs["value"])
                 })
         return observations
     except Exception as e:
-        print(f"Fehler bei {series_id}: {e}")
+        print(f"Error fetching {series_id}: {e}")
         return []
 
 def main():
     if not API_KEY:
-        raise ValueError("Kein API Key gefunden! Setze FRED_API_KEY in den Secrets.")
+        print("ACHTUNG: Kein API Key gefunden. Secret prüfen!")
+        return
 
     final_data = {
         "meta": {
             "updated": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "source": "Federal Reserve Bank of St. Louis (Public Domain)"
+            "source": "Federal Reserve Bank of St. Louis"
         },
         "data": {}
     }
 
-    print("Starte Download...")
+    print("Starte Download von FRED...")
     for name, series_id in SERIES_MAP.items():
-        print(f"Lade {name} ({series_id})...")
+        print(f"Hole {name}...")
         final_data["data"][name] = fetch_series(series_id)
 
-    # Speichern als JSON für die App
+    # Speichern als JSON
     with open('sentinel_data.json', 'w') as f:
         json.dump(final_data, f)
     
