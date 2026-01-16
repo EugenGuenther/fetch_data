@@ -43,7 +43,7 @@ def fetch_series(series_id):
     }
     
     try:
-        response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
+        response = requests.get(BASE_URL, params=params, headers=headers, timeout=300)
         
         # 1. HTTP Status Check
         if response.status_code != 200:
@@ -126,4 +126,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
