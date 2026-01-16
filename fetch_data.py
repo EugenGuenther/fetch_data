@@ -11,7 +11,7 @@ API_KEY = os.environ.get('FRED_API_KEY')
 BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 # Wir laden 400 Tage Historie (Puffer für 200-Tage-Durchschnitt)
-START_DATE = (datetime.now() - timedelta(days=400)).strftime('%Y-%m-%d')
+START_DATE = (datetime.now() - timedelta(days=3653)).strftime('%Y-%m-%d')
 
 # Mapping: Dein App-Name -> FRED Series ID
 SERIES_MAP = {
@@ -126,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
