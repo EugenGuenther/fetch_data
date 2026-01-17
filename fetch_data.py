@@ -107,7 +107,7 @@ def main():
         output = {
             "meta": {
                 "updated": datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC'),
-                "source": "Federal Reserve Bank of St. Louis"
+                "source": "Federal Reserve Bank of St. Louis",
                 "history_days_setting": str(START_DATE)
             },
             "data": temp_storage
@@ -127,6 +127,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
