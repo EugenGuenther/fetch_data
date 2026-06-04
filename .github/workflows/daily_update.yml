@@ -1,58 +1,67 @@
-name: Daily Sentinel Update
+name: "Data Sentinel: FRED Macroeconomic Aggregation"
 
-# WANN soll das laufen?
+# Definition der Ausführungskriterien (Trigger): 
+# Einmal täglich vollautomatisch um 02:00 UTC oder manuell durch Entwickler via Button
 on:
   schedule:
-    # Täglich um 08:00 Uhr UTC (ca. 09:00/10:00 Uhr deutscher Zeit)
-    # Das ist ideal, da FRED-Daten meist über Nacht aktualisiert werden.
-    - cron: '0 8 * * *'
-  
-  # Erlaubt dir, den Prozess manuell per Button im "Actions"-Tab zu starten (zum Testen)
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
-# BERECHTIGUNGEN
-# Wichtig: Erlaubt dem Bot, die JSON-Datei zurück ins Repo zu speichern.
+# Definition der Berechtigungen auf Top-Level (Principle of Least Privilege).
+# Die explizite Gewährung von Schreibrechten ist der Schlüssel zur Vermeidung von 403-Fehlern.
 permissions:
-  contents: write
+  contents: write # Zwingend erforderlich für den Push der JSON-Datei 
 
 jobs:
-  update-data:
+  aggregate-data:
+    # Die Zuweisung von ubuntu-latest referenziert die aktuellste LTS-Version (Ubuntu 24.04).
+    # Durch die nachfolgende Architektur ist der Workflow gegen PEP 668 immunisiert.[8]
     runs-on: ubuntu-latest
-    
+
     steps:
-      # 1. Repository herunterladen
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      # 2. Python Umgebung einrichten
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # 1. Repository-Checkout: 
+      # Die Major-Version v4 ist vollständig kompatibel mit Node 24. 
+      # persist-credentials bleibt auf true, um das GITHUB_TOKEN für den Commit-Schritt zu speichern.
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
         with:
-          python-version: '3.9'
+          fetch-depth: 1 # Ein flacher Klon reicht aus, da historische Commits nicht reorganisiert werden.
 
-      # 3. Bibliotheken installieren
-      # Wir brauchen nur 'requests', da wir Pandas für Speed entfernt haben.
-      - name: Install Dependencies
-        run: pip install requests
+      # 2. Python Isolierung (Die definitive Lösung für PEP 668): 
+      # v5 ist zwingend erforderlich für den nativen Node 24 Support.
+      # Dies umgeht den "externally-managed-environment" Fehler des Host-Systems elegant.
+      - name: "Setup Python Environment"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # Aktiviert lokales Caching, um wiederkehrende CI-Zeiten drastisch zu reduzieren.
 
-      # 4. Das Python-Skript ausführen (DER WICHTIGE TEIL)
-      - name: Run Fetch Script
-        env:
-          # HIER ist die Brücke: GitHub Secret -> Python Umgebungsvariable
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python fetch_data.py
-
-      # 5. Ergebnis speichern (nur wenn Schritt 4 erfolgreich war)
-      - name: Commit and Push changes
+      # 3. Installation der Abhängigkeiten:
+      # Da setup-python den Ausführungspfad manipuliert hat, greift die APT-Restriktion nicht ein.
+      # Der Parameter --break-system-packages wird hier obsolet und vermieden.
+      - name: "Install Python Dependencies"
         run: |
-          # Bot-Identität konfigurieren
-          git config --global user.name 'SentinelBot'
-          git config --global user.email 'bot@sentinel.app'
-          
-          # Die neue JSON-Datei zum Commit vormerken
-          git add sentinel_data.json
-          
-          # Sicherheits-Check: Gibt es überhaupt Änderungen?
-          # Wenn nein (git diff --quiet), tue nichts.
-          # Wenn ja (||), mache den Commit und Push.
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-Update Data [skip ci]" && git push)
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # 4. Ausführung des FRED-Kollektors:
+      # Das kritische API-Secret wird sicher als temporäre Umgebungsvariable injiziert.[28, 29, 30]
+      - name: "Execute Sentinel Engine"
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python sentinel.py
+
+      # 5. Persistierung und Git-Commit:
+      # Die Major-Version v7 unterstützt nativ die Node 24-Engine des Runners. 
+      # Diese Action fängt die durch das Skript verursachten Dateisystem-Modifikationen 
+      # an sentinel_data.json ab und committet sie zurück in das Repository.
+      - name: "Commit and Push Changes"
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "Automated Data Update: Aggregation of FRED Macro Indicators"
+          file_pattern: "sentinel_data.json"
+          commit_user_name: "Sentinel-Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "Sentinel-Bot <actions@github.com>"
+          # Falls das Python-Skript keine neuen Daten generiert hat (Git Diff ist leer),
+          # erkennt die Action dies als Idempotenz-Fall und überspringt den Push-Prozess ohne Fehlermeldung.
