@@ -1,67 +1,50 @@
-name: "Data Sentinel: FRED Macroeconomic Aggregation"
+name: Daily Sentinel Update
 
-# Definition der Ausführungskriterien (Trigger): 
-# Einmal täglich vollautomatisch um 02:00 UTC oder manuell durch Entwickler via Button
+# WANN soll das laufen?
 on:
   schedule:
-    - cron: '0 2 * * *'
+    # Täglich um 08:00 Uhr UTC (ca. 09:00/10:00 Uhr deutscher Zeit)
+    - cron: '0 8 * * *'
+  
+  # Erlaubt dir, den Prozess manuell per Button im "Actions"-Tab zu starten
   workflow_dispatch:
 
-# Definition der Berechtigungen auf Top-Level (Principle of Least Privilege).
-# Die explizite Gewährung von Schreibrechten ist der Schlüssel zur Vermeidung von 403-Fehlern.
+# BERECHTIGUNGEN
 permissions:
-  contents: write # Zwingend erforderlich für den Push der JSON-Datei 
+  contents: write
 
 jobs:
-  aggregate-data:
-    # Die Zuweisung von ubuntu-latest referenziert die aktuellste LTS-Version (Ubuntu 24.04).
-    # Durch die nachfolgende Architektur ist der Workflow gegen PEP 668 immunisiert.[8]
+  update-data:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # 1. Repository-Checkout: 
-      # Die Major-Version v4 ist vollständig kompatibel mit Node 24. 
-      # persist-credentials bleibt auf true, um das GITHUB_TOKEN für den Commit-Schritt zu speichern.
-      - name: "Checkout Repository"
+      # 1. Repository herunterladen (Update auf v4 für Node.js 24)
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1 # Ein flacher Klon reicht aus, da historische Commits nicht reorganisiert werden.
 
-      # 2. Python Isolierung (Die definitive Lösung für PEP 668): 
-      # v5 ist zwingend erforderlich für den nativen Node 24 Support.
-      # Dies umgeht den "externally-managed-environment" Fehler des Host-Systems elegant.
-      - name: "Setup Python Environment"
+      # 2. Python Umgebung einrichten (Update auf v5 zur Umgehung von PEP 668)
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip' # Aktiviert lokales Caching, um wiederkehrende CI-Zeiten drastisch zu reduzieren.
+          python-version: '3.9'
+          cache: 'pip' # Optional: Beschleunigt künftige Durchläufe
 
-      # 3. Installation der Abhängigkeiten:
-      # Da setup-python den Ausführungspfad manipuliert hat, greift die APT-Restriktion nicht ein.
-      # Der Parameter --break-system-packages wird hier obsolet und vermieden.
-      - name: "Install Python Dependencies"
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+      # 3. Bibliotheken installieren (Funktioniert nun fehlerfrei dank v5)
+      - name: Install Dependencies
+        run: pip install requests
 
-      # 4. Ausführung des FRED-Kollektors:
-      # Das kritische API-Secret wird sicher als temporäre Umgebungsvariable injiziert.[28, 29, 30]
-      - name: "Execute Sentinel Engine"
+      # 4. Das Python-Skript ausführen
+      - name: Run Fetch Script
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python sentinel.py
+        run: python fetch_data.py
 
-      # 5. Persistierung und Git-Commit:
-      # Die Major-Version v7 unterstützt nativ die Node 24-Engine des Runners. 
-      # Diese Action fängt die durch das Skript verursachten Dateisystem-Modifikationen 
-      # an sentinel_data.json ab und committet sie zurück in das Repository.
-      - name: "Commit and Push Changes"
+      # 5. Ergebnis sicher speichern (Update auf offizielle Action v7)
+      - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "Automated Data Update: Aggregation of FRED Macro Indicators"
+          commit_message: "Auto-Update Data [skip ci]"
           file_pattern: "sentinel_data.json"
-          commit_user_name: "Sentinel-Bot"
-          commit_user_email: "actions@github.com"
-          commit_author: "Sentinel-Bot <actions@github.com>"
-          # Falls das Python-Skript keine neuen Daten generiert hat (Git Diff ist leer),
-          # erkennt die Action dies als Idempotenz-Fall und überspringt den Push-Prozess ohne Fehlermeldung.
+          commit_user_name: "SentinelBot"
+          commit_user_email: "bot@sentinel.app"
+          commit_author: "SentinelBot <bot@sentinel.app>"
