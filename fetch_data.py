@@ -38,7 +38,7 @@ def fetch_series(series_id):
     }
     
     # Custom User-Agent zur Vermeidung von Blockaden durch WAFs (Web Application Firewalls)
-   headers = { "User-Agent": "SentinelApp/1.0 (GitHub Actions Mirror)" }
+    headers = { "User-Agent": "SentinelApp/1.0 (GitHub Actions Mirror)" }
     
     try:
         response = requests.get(BASE_URL, params=params, headers=headers, timeout=60)
