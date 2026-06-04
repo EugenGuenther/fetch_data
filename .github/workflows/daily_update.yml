@@ -20,13 +20,13 @@ jobs:
     steps:
       # 1. Repository herunterladen (Update auf v4 für Node.js 24)
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 2. Python Umgebung einrichten (Update auf v5 zur Umgehung von PEP 668)
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: '3.x'
           cache: 'pip' # Optional: Beschleunigt künftige Durchläufe
 
       # 3. Bibliotheken installieren (Funktioniert nun fehlerfrei dank v5)
