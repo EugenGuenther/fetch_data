@@ -38,12 +38,10 @@ def fetch_series(series_id):
     }
     
     # Custom User-Agent zur Vermeidung von Blockaden durch WAFs (Web Application Firewalls)
-    headers = { "User-Agent": "SentinelApp/2.0 (GitHub Actions Automated Pipeline)" }
+   headers = { "User-Agent": "SentinelApp/1.0 (GitHub Actions Mirror)" }
     
     try:
-        # Ein Timeout von 30 Sekunden ist für die FRED API architektonisch sinnvoller als 300s,
-        # um hängende Runner-Jobs (Zombie-Prozesse) zu verhindern.
-        response = requests.get(BASE_URL, params=params, headers=headers, timeout=30)
+        response = requests.get(BASE_URL, params=params, headers=headers, timeout=60)
         
         # Proaktives Abfangen von HTTP-Fehlercodes (z. B. 429 Rate Limits oder 400 Bad Request)
         if response.status_code!= 200:
@@ -58,7 +56,7 @@ def fetch_series(series_id):
             print(f"ERROR {series_id}: Der kritische Schlüssel 'observations' fehlt in der Payload.")
             return None
 
-        clean_observations =
+        clean_observations = []
         for obs in data["observations"]:
             # Filtern von ungültigen oder fehlenden Werten (repräsentiert durch ".")
             if obs.get("value")!= ".": 
@@ -118,11 +116,8 @@ def main():
         }
 
         try:
-            # Das Skript überschreibt die existierende Datei im Workspace des Runners.
-            # Die Verwendung von separators=(',', ':') entfernt sämtliche unnötigen Leerzeichen
-            # und optimiert die Datei drastisch für die Speicherung in Git.
             with open('sentinel_data.json', 'w') as f:
-                json.dump(output, f, separators=(',', ':'))
+                json.dump(output, f)
             print("SUCCESS: Datensatz 'sentinel_data.json' wurde im Runner-Dateisystem erfolgreich aggregiert.")
             sys.exit(0) # Positiver Exit-Code für die Pipeline
         except IOError as e:
