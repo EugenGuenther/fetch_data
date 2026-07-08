@@ -1,0 +1,40 @@
+name: Run CMSRI Pipeline
+
+on:
+  schedule:
+    # Runs automatically every day at 22:00 UTC (17:00 EST)
+    - cron: '0 22 * * *'
+  # Allows you to trigger the workflow manually from the GitHub Actions tab
+  workflow_dispatch: 
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip' # Speeds up subsequent runs
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests duckdb scikit-learn
+
+      - name: Run the CMSRI Python Script
+        env:
+          # Pulls your secure API key from GitHub Secrets
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python cmsri_pipeline.py
+
+      - name: Upload Output JSON as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmsri-daily-output
+          path: cmsri_output.json
+          retention-days: 7
