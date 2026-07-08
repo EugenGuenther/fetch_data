@@ -1,4 +1,4 @@
-name: Run CMSRI Pipeline
+name: Run MRI Pipeline
 
 on:
   schedule:
@@ -29,16 +29,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas requests duckdb scikit-learn
 
-      - name: Run the CMSRI Python Script
+      - name: Run the MRI Python Script
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python cmsri_pipeline.py
+        run: python mri_pipeline.py
 
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "Auto-Update CMSRI Data [skip ci]"
-          file_pattern: "cmsri_output.json"
+          commit_message: "Auto-Update MRI Data [skip ci]"
+          file_pattern: "mri_output.json"
           commit_user_name: "SentinelBot"
           commit_user_email: "bot@sentinel.app"
           commit_author: "SentinelBot <bot@sentinel.app>"
