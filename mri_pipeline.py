@@ -7,6 +7,7 @@ from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime, timedelta
 
+# Market Reality Index (MRI): An indicator scanning beneath the surface of the stock market to see the "bones" of the economy.
 # Konfiguration
 FRED_API_KEY = os.environ.get("FRED_API_KEY")
 FRED_SERIES = {
@@ -97,7 +98,7 @@ def process_data_with_duckdb(fred_dfs, gdelt_df):
     clean_df = con.execute(query).fetchdf()
     return clean_df.dropna()
 
-def calculate_cmsri(df):
+def calculate_mri(df):
     """Berechnet den Index mithilfe der IncrementalPCA."""
     features = ['T10Y2Y', 'RRPONTSYD', 'WALCL', 'ICSA', 'GDELT_TONE']
     
@@ -121,12 +122,12 @@ def calculate_cmsri(df):
     # Min-Max-Skalierung auf einen anwenderfreundlichen Bereich (0 - 100)
     min_val = df['Raw_Index'].min()
     max_val = df['Raw_Index'].max()
-    df['CMSRI_Score'] = ((df['Raw_Index'] - min_val) / (max_val - min_val)) * 100
+    df['MRI_Score'] = ((df['Raw_Index'] - min_val) / (max_val - min_val)) * 100
     
     return df
 
 def main():
-    print("Starte CMSRI Pipeline...")
+    print("Starte MRI Pipeline...")
     
     # 1. Datenabruf
     fred_data = []
@@ -142,20 +143,20 @@ def main():
     clean_df = process_data_with_duckdb(fred_data, gdelt_data)
     
     # 3. Algorithmische Berechnung (PCA)
-    print("Berechne Hauptkomponenten und CMSRI-Score...")
-    final_df = calculate_cmsri(clean_df)
+    print("Berechne Hauptkomponenten und MRI-Score...")
+    final_df = calculate_mri(clean_df)
     
     # 4. Ausgabe für API / Datenbank
     latest_score = final_df.iloc[-1]
     print("\n--- Aktueller Marktindikator ---")
     print(f"Datum: {latest_score['date'].strftime('%Y-%m-%d')}")
-    print(f"CMSRI Score (0-100): {latest_score['CMSRI_Score']:.2f}")
+    print(f"MRI Score (0-100): {latest_score['MRI_Score']:.2f}")
     print(f"PC1 (Makro-Trend): {latest_score['PC1_MacroTrend']:.2f}")
     print(f"PC2 (Divergenz-Warnung): {latest_score['PC2_Divergence']:.2f}")
     
     # Speichern für die App-Backend-Datenbank
-    final_df[['date', 'CMSRI_Score', 'PC1_MacroTrend', 'PC2_Divergence']].to_json("cmsri_output.json", orient="records")
-    print("Daten erfolgreich in 'cmsri_output.json' gespeichert.")
+    final_df[['date', 'MRI_Score', 'PC1_MacroTrend', 'PC2_Divergence']].to_json("mri_output.json", orient="records")
+    print("Daten erfolgreich in 'mri_output.json' gespeichert.")
 
 if __name__ == "__main__":
     main()
